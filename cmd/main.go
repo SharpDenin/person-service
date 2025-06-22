@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"os"
 	"person-service/internal/config"
+	"person-service/internal/repository"
 )
 
 func initLogger() {
@@ -31,6 +33,14 @@ func main() {
 		logrus.Fatal("Failed to load config: ", err)
 	}
 	gin.SetMode(cfg.GinMode)
+
+	// Test db connection
+	ctx := context.Background()
+	db, err := repository.NewDB(ctx, cfg)
+	if err != nil {
+		logrus.Fatal("Failed to initialize database: ", err)
+	}
+	defer db.Close()
 
 	// Init router
 	r := setupRouter()
