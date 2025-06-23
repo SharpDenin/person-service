@@ -38,8 +38,8 @@ func NewPersonRepository(db *pgxpool.Pool, log *logrus.Logger) PersonRepositoryI
 
 func (r *PersonRepository) Create(ctx context.Context, person *domain.Person) (int64, error) {
 	query := `
-		INSERT INTO people (name, surname, patronymic, age, gender, nationality, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO people (name, surname, patronymic, age, gender, nationality)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id
     `
 	var id int64
@@ -50,7 +50,6 @@ func (r *PersonRepository) Create(ctx context.Context, person *domain.Person) (i
 		person.Age,
 		person.Gender,
 		person.Nationality,
-		person.CreatedAt,
 	).Scan(&id)
 	if err != nil {
 		logrus.Errorf("Failed to create person with name %s: %v", person.Name, err)

@@ -4,13 +4,21 @@ import (
 	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"os"
+	_ "person-service/docs"
 	"person-service/internal/config"
 	"person-service/internal/handler"
 	"person-service/internal/repository"
 	"person-service/internal/service"
 )
 
+// @title Person Service API
+// @version 1.0
+// @description REST API for managing persons with data enrichment from external APIs
+// @host localhost:8080
+// @BasePath /api
 func initLogger() *logrus.Logger {
 	log := logrus.New()
 	log.SetFormatter(&logrus.JSONFormatter{})
@@ -25,6 +33,7 @@ func setupRouter() *gin.Engine {
 		logrus.Info("Health check requested")
 		c.JSON(200, gin.H{"status": "ok"})
 	})
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	return router
 }
 
@@ -40,6 +49,13 @@ func main() {
 
 	// Test db connection
 	ctx := context.Background()
+	if err := repository.RunMigrations(
+		ctx,
+		cfg.DatabaseDSN,
+		log,
+	); err != nil {
+		log.Fatalf("Migrations failed: %v", err)
+	}
 	db, err := repository.NewDB(ctx, cfg)
 	if err != nil {
 		log.Fatal("Failed to initialize database: ", err)

@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16.1
+    container_name: person-service-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5444:5432"
+    volumes:
+      - person-service-test-db:/var/lib/postgresql/data
+
+volumes:
+  person-service-test-db:

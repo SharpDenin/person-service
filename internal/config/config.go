@@ -10,6 +10,7 @@ import (
 type Config struct {
 	ServerPort  string
 	DatabaseURL string
+	DatabaseDSN string
 	GinMode     string
 }
 
@@ -22,6 +23,7 @@ func Load() (*Config, error) {
 	config := &Config{
 		ServerPort:  os.Getenv("SERVER_PORT"),
 		DatabaseURL: os.Getenv("DATABASE_URL"),
+		DatabaseDSN: os.Getenv("DATABASE_DSN"),
 		GinMode:     os.Getenv("GIN_MODE"),
 	}
 

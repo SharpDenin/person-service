@@ -8,6 +8,7 @@ import (
 	"os"
 	"person-service/internal/domain"
 	"person-service/internal/repository"
+	"sync"
 )
 
 type PersonServiceInterface interface {
@@ -18,8 +19,9 @@ type PersonServiceInterface interface {
 	Delete(ctx context.Context, id int64) error
 }
 type PersonService struct {
-	repo repository.PersonRepositoryInterface
-	log  *logrus.Logger
+	repo   repository.PersonRepositoryInterface
+	client *EnrichmentClient
+	log    *logrus.Logger
 }
 
 func NewPersonService(repo repository.PersonRepositoryInterface, log *logrus.Logger) PersonServiceInterface {
@@ -30,8 +32,9 @@ func NewPersonService(repo repository.PersonRepositoryInterface, log *logrus.Log
 		log.SetLevel(logrus.DebugLevel)
 	}
 	return &PersonService{
-		repo: repo,
-		log:  log,
+		repo:   repo,
+		client: NewEnrichmentClient(log),
+		log:    log,
 	}
 }
 
@@ -41,6 +44,39 @@ func (s *PersonService) Create(ctx context.Context, person *domain.Person) (int6
 		return 0, fmt.Errorf("name and surname are required")
 	}
 	s.log.Debugf("Creating person with name %s and surname %s", person.Name, person.Surname)
+
+	var wg sync.WaitGroup
+	wg.Add(3)
+
+	go func() {
+		defer wg.Done()
+		if age, err := s.client.GetAge(ctx, person.Name); err == nil {
+			person.Age = age
+		} else {
+			s.log.WithError(err).Warn("Age enrichment failed")
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		if gender, err := s.client.GetGender(ctx, person.Name); err == nil {
+			person.Gender = gender
+		} else {
+			s.log.WithError(err).Warn("Gender enrichment failed")
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		if nationality, err := s.client.GetNationality(ctx, person.Name); err == nil {
+			person.Nationality = nationality
+		} else {
+			s.log.WithError(err).Warn("Nationality enrichment failed")
+		}
+	}()
+
+	wg.Wait()
+
 	id, err := s.repo.Create(ctx, person)
 	if err != nil {
 		s.log.Errorf("Failed to create person with name %s: %v", person.Name, err)

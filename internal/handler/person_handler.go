@@ -10,6 +10,7 @@ import (
 	"person-service/internal/repository"
 	"person-service/internal/service"
 	"strconv"
+	"time"
 )
 
 const (
@@ -36,6 +37,17 @@ func NewPersonHandler(service service.PersonServiceInterface, log *logrus.Logger
 	}
 }
 
+// CreatePerson creates a new person
+// @Summary Create a new person
+// @Description Creates a person with enriched age, gender, and nationality from external APIs
+// @Tags persons
+// @Accept json
+// @Produce json
+// @Param person body domain.CreatePersonRequest true "Person data"
+// @Success 201 {object} domain.Person
+// @Failure 400 {object} domain.ErrorResponse "Invalid request body"
+// @Failure 500 {object} domain.ErrorResponse "Internal server error"
+// @Router /person [post]
 func (h *PersonHandler) CreatePerson(c *gin.Context) {
 	var request domain.CreatePersonRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -53,6 +65,7 @@ func (h *PersonHandler) CreatePerson(c *gin.Context) {
 		Name:       request.Name,
 		Surname:    request.Surname,
 		Patronymic: patronymicPtr,
+		CreatedAt:  time.Now().UTC(),
 	}
 
 	id, err := h.service.Create(c.Request.Context(), person)
@@ -70,6 +83,17 @@ func (h *PersonHandler) CreatePerson(c *gin.Context) {
 	c.JSON(http.StatusCreated, person)
 }
 
+// GetPerson retrieves a person by ID
+// @Summary Get a person by ID
+// @Description Retrieves a person by their unique ID
+// @Tags persons
+// @Produce json
+// @Param id path int true "Person ID"
+// @Success 200 {object} domain.Person
+// @Failure 400 {object} domain.ErrorResponse "Invalid ID format"
+// @Failure 404 {object} domain.ErrorResponse "Person not found"
+// @Failure 500 {object} domain.ErrorResponse "Internal server error"
+// @Router /person/{id} [get]
 func (h *PersonHandler) GetPerson(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -94,6 +118,22 @@ func (h *PersonHandler) GetPerson(c *gin.Context) {
 	c.JSON(http.StatusOK, person)
 }
 
+// GetAll retrieves all persons with pagination and filtering
+// @Summary Get all persons
+// @Description Retrieves a list of persons with optional filters and pagination
+// @Tags persons
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Page size" default(10)
+// @Param name query string false "Filter by name"
+// @Param surname query string false "Filter by surname"
+// @Param age query int false "Filter by age"
+// @Param gender query string false "Filter by gender"
+// @Param nationality query string false "Filter by nationality"
+// @Success 200 {object} domain.PersonListResponse
+// @Failure 400 {object} domain.ErrorResponse "Invalid query parameters"
+// @Failure 500 {object} domain.ErrorResponse "Internal server error"
+// @Router /people [get]
 func (h *PersonHandler) GetAll(c *gin.Context) {
 	page, err := strconv.Atoi(c.DefaultQuery("page", strconv.Itoa(paginationDefaultPage)))
 	if err != nil || page < 1 {
@@ -157,6 +197,19 @@ func (h *PersonHandler) GetAll(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// Update updates a person by ID
+// @Summary Update a person
+// @Description Updates a person's details by their ID
+// @Tags persons
+// @Accept json
+// @Produce json
+// @Param id path int true "Person ID"
+// @Param person body domain.UpdatePersonRequest true "Person data"
+// @Success 200 {object} domain.Person
+// @Failure 400 {object} domain.ErrorResponse "Invalid request body or ID"
+// @Failure 404 {object} domain.ErrorResponse "Person not found"
+// @Failure 500 {object} domain.ErrorResponse "Internal server error"
+// @Router /person/{id} [put]
 func (h *PersonHandler) Update(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -201,6 +254,17 @@ func (h *PersonHandler) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, person)
 }
 
+// Delete deletes a person by ID
+// @Summary Delete a person
+// @Description Deletes a person by their ID
+// @Tags persons
+// @Produce json
+// @Param id path int true "Person ID"
+// @Success 204
+// @Failure 400 {object} domain.ErrorResponse "Invalid ID format"
+// @Failure 404 {object} domain.ErrorResponse "Person not found"
+// @Failure 500 {object} domain.ErrorResponse "Internal server error"
+// @Router /person/{id} [delete]
 func (h *PersonHandler) Delete(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
