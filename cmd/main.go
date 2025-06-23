@@ -6,13 +6,17 @@ import (
 	"github.com/sirupsen/logrus"
 	"os"
 	"person-service/internal/config"
+	"person-service/internal/handler"
 	"person-service/internal/repository"
+	"person-service/internal/service"
 )
 
-func initLogger() {
-	logrus.SetFormatter(&logrus.JSONFormatter{})
-	logrus.SetOutput(os.Stdout)
-	logrus.SetLevel(logrus.DebugLevel)
+func initLogger() *logrus.Logger {
+	log := logrus.New()
+	log.SetFormatter(&logrus.JSONFormatter{})
+	log.SetOutput(os.Stdout)
+	log.SetLevel(logrus.DebugLevel)
+	return log
 }
 
 func setupRouter() *gin.Engine {
@@ -25,12 +29,12 @@ func setupRouter() *gin.Engine {
 }
 
 func main() {
-	initLogger()
+	log := initLogger()
 
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
-		logrus.Fatal("Failed to load config: ", err)
+		log.Fatal("Failed to load config: ", err)
 	}
 	gin.SetMode(cfg.GinMode)
 
@@ -38,16 +42,29 @@ func main() {
 	ctx := context.Background()
 	db, err := repository.NewDB(ctx, cfg)
 	if err != nil {
-		logrus.Fatal("Failed to initialize database: ", err)
+		log.Fatal("Failed to initialize database: ", err)
 	}
 	defer db.Close()
+
+	personRepo := repository.NewPersonRepository(db, log)
+	personService := service.NewPersonService(personRepo, log)
+	personHandler := handler.NewPersonHandler(personService, log)
 
 	// Init router
 	r := setupRouter()
 
+	api := r.Group("/api")
+	{
+		api.POST("/person", personHandler.CreatePerson)
+		api.GET("/person/:id", personHandler.GetPerson)
+		api.GET("/people", personHandler.GetAll)
+		api.PUT("/person/:id", personHandler.Update)
+		api.DELETE("/person/:id", personHandler.Delete)
+	}
+
 	// Load server
-	logrus.Infof("Server started on port %s", cfg.ServerPort)
+	log.Infof("Server started on port %s", cfg.ServerPort)
 	if err := r.Run(":" + cfg.ServerPort); err != nil {
-		logrus.Fatal("Failed to start server: ", err)
+		log.Fatal("Failed to start server: ", err)
 	}
 }
